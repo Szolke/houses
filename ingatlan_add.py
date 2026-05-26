@@ -380,8 +380,8 @@ def scrape_ingatlancom(url: str, slug: str) -> dict:
         print("  Playwright nincs telepítve. Futtasd: pip install playwright && python -m playwright install chromium")
         return None
 
-    # Clean URL - csak az ID kell
-    clean_url = re.sub(r'[?&](brid|fbclid|utm_)[^&]*', '', url).rstrip('?&')
+    # Clean URL - csak az ID kell, tracking paraméterek nélkül
+    clean_url = "https://ingatlan.com/" + slug
 
     print("  Playwright böngészővel töltöm be az oldalt...")
     with sync_playwright() as p:
@@ -389,44 +389,67 @@ def scrape_ingatlancom(url: str, slug: str) -> dict:
         page = browser.new_page(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36"
         )
-        try:
-            page.goto(clean_url, wait_until="networkidle", timeout=30000)
-        except Exception:
-            page.goto(clean_url, wait_until="domcontentloaded", timeout=30000)
+        page.goto(clean_url, wait_until="domcontentloaded", timeout=30000)
 
-        # Cookie/popup bezárás
-        for btn_text in ["Elfogadom", "Rendben", "OK", "Bezár", "Elutasít"]:
+        # ── Cookie popup bezárása (CybotCookiebot) ──
+        try:
+            page.wait_for_selector("#CybotCookiebotDialogBodyButtonAccept", timeout=5000)
+            page.click("#CybotCookiebotDialogBodyButtonAccept")
+            page.wait_for_timeout(1000)
+            print("  Cookie elfogadva")
+        except:
+            # Próbáljuk JS-sel elrejteni
             try:
-                btn = page.get_by_text(btn_text, exact=True).first
-                if btn.is_visible():
-                    btn.click()
-                    page.wait_for_timeout(500)
+                page.evaluate("document.getElementById('CybotCookiebotDialog')?.remove()")
             except:
                 pass
+
+        page.wait_for_load_state("networkidle", timeout=15000)
+
+        # ── JSON-LD strukturált adatok ──
+        ld_data = {}
+        try:
+            ld_script = page.query_selector("script[type='application/ld+json']")
+            if ld_script:
+                ld_data = json.loads(ld_script.inner_text())
+        except:
+            pass
 
         html = page.content()
         full_text = page.inner_text("body")
 
-        # ── Cím ──
+        # ── Cím a JSON-LD-ből vagy H1-ből ──
         title = ""
-        for sel in ["h1", "[class*='title']", "[class*='Title']", "h2"]:
-            el = page.query_selector(sel)
-            if el:
-                t = clean_text(el.inner_text())
-                if t and len(t) > 5:
-                    title = t
-                    break
+        if ld_data.get("name"):
+            title = clean_text(ld_data["name"])
+        if not title:
+            h1 = page.query_selector("h1")
+            if h1:
+                title = clean_text(h1.inner_text())
+
+        # ── Adatok a JSON-LD-ből ──
+        main = ld_data.get("mainEntity", {})
+        size      = int(main.get("floorSize", {}).get("value", 0)) or None
+        bedrooms  = int(main.get("numberOfRooms", 0)) or None
+        address   = main.get("address", {})
+        location  = address.get("addressLocality", "Szeged")
+        if address.get("streetAddress"):
+            location = address["streetAddress"]
+
+        # Telek regex-szel
+        plot_size = None
+        m = re.search(r'[Tt]elek[^\d]*(\d+)\s*m', full_text)
+        if m: plot_size = int(m.group(1))
 
         # ── Ár ──
         price = ""
-        # ingatlan.com ár formátum: "89 900 000 Ft" vagy "89,9 M Ft"
+        # Keresés: "89 900 000 Ft" vagy "89,9 M Ft"
         for pattern in [r'\d[\d\s]{5,}\s*Ft', r'\d+[,.]\d+\s*M\s*Ft']:
             m = re.search(pattern, full_text)
             if m:
                 raw = m.group()
-                if 'M Ft' in raw or 'M\xa0Ft' in raw:
-                    # Millió formátum: "89,9 M Ft" -> "89 900 000"
-                    num = re.search(r'[\d,\.]+', raw)
+                if 'M Ft' in raw:
+                    num = re.search(r'[\d,.]+', raw)
                     if num:
                         val = float(num.group().replace(',', '.')) * 1_000_000
                         price = str(int(val))
@@ -438,7 +461,7 @@ def scrape_ingatlancom(url: str, slug: str) -> dict:
         # ── Leírás ──
         description = ""
         for sel in ["[class*='description']", "[class*='Description']",
-                    "[class*='leiras']", "[class*='content']", "article"]:
+                    "[class*='leiras']", "article p", "main p"]:
             els = page.query_selector_all(sel)
             for el in els:
                 try:
@@ -451,49 +474,57 @@ def scrape_ingatlancom(url: str, slug: str) -> dict:
             if description:
                 break
 
-        # ── Numerikus adatok regex-szel ──
-        size, plot_size, bedrooms = None, None, None
-
-        m = re.search(r'(\d+)\s*m[²2]\s*(?:alap|nettó|élettér|lakó)', full_text, re.I)
-        if m: size = int(m.group(1))
-
-        m = re.search(r'[Tt]elek[^\d]*(\d+)\s*m[²2]', full_text)
-        if m: plot_size = int(m.group(1))
-
-        m = re.search(r'(\d+)\s*[Ss]zoba', full_text)
-        if m: bedrooms = int(m.group(1))
-
         # ── Képek ──
+        # Galériára kattintás az összes kép betöltéséhez
         images = []
         seen = set()
 
-        def add_img(src):
-            if not src or len(src) < 10: return
-            if any(x in src.lower() for x in ['logo', 'icon', 'avatar', 'sprite', 'placeholder']): return
-            if src.startswith('data:'): return
+        def add_ip_img(src):
+            """Csak ip.ingatlancdn.com képeket fogad el."""
+            if not src or 'ip.ingatlancdn.com' not in src: return
+            # Nagyfelbontású verzió: /resize/magan/800x800/ megtartása
             if src not in seen:
                 seen.add(src)
                 images.append(src)
 
-        # <img> tagek
-        for img in page.query_selector_all("img"):
-            add_img(img.get_attribute("src") or "")
-            add_img(img.get_attribute("data-src") or "")
-            add_img(img.get_attribute("data-lazy") or "")
+        # Első kör: HTML-ből kinyerés
+        for src in re.findall(r"https://ip\.ingatlancdn\.com/[^\"\'\s<>]+", html):
+            add_ip_img(src)
 
-        # Regex a HTML-ből - ingatlan.com CDN URL-ek
-        for m in re.findall(r'https?://[^\s"\'> ]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"\'> ]*)?', html):
-            if any(x in m for x in ['cdn', 'image', 'foto', 'kep', 'photo', 'media', 'static']):
-                add_img(m.split('?')[0])  # query string levágása
+        # Galériára kattintás hogy az összes kép betöltődjön
+        try:
+            gallery_btn = page.query_selector("img[src*='ip.ingatlancdn.com']")
+            if gallery_btn:
+                gallery_btn.click()
+                page.wait_for_timeout(2000)
+                html2 = page.content()
+                for src in re.findall(r"https://ip\.ingatlancdn\.com/[^\"\'\s<>]+", html2):
+                    add_ip_img(src)
+                # Lapozás a galériában
+                for _ in range(30):
+                    try:
+                        next_btn = page.query_selector("[aria-label='Következő'], [aria-label='next'], button.next, .gallery-next")
+                        if not next_btn or not next_btn.is_visible():
+                            break
+                        next_btn.click()
+                        page.wait_for_timeout(500)
+                        html3 = page.content()
+                        before = len(images)
+                        for src in re.findall(r"https://ip\.ingatlancdn\.com/[^\"\'\s<>]+", html3):
+                            add_ip_img(src)
+                        if len(images) == before:
+                            break
+                    except:
+                        break
+        except Exception as e:
+            print(f"  [debug] Galéria kattintás: {e}")
+
+        # Social/thumbnail eltávolítása, csak resize/magan képek
+        images = [u for u in images if '/resize/magan/' in u or '/resize/' in u]
 
         print(f"  [debug] Képek találva: {len(images)}")
         print(f"  [debug] Cím: {title[:60]}")
         print(f"  [debug] Ár: {price}")
-
-        # ── Helyszín ──
-        location = "Szeged"
-        m = re.search(r'Szeged[^,]*', full_text)
-        if m: location = clean_text(m.group()[:40])
 
         browser.close()
 
