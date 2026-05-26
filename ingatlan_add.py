@@ -218,6 +218,155 @@ def scrape_varos_hu(html: str, url: str, slug: str) -> dict:
         "_raw_images":   images,     # temp
     }
 
+
+# ── posztolom.com scraper (Playwright) ──────────────────────────────────────
+
+def scrape_posztolom(url: str, slug: str) -> dict:
+    """ingatlan.posztolom.com scraper — Playwright alapú (JS rendering)."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        print("  ⚠️  Playwright nincs telepítve. Futtasd: pip install playwright && python -m playwright install chromium")
+        return None
+
+    print("  🌐 Playwright böngészővel töltöm be az oldalt...")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        try:
+            page.goto(url, wait_until="networkidle", timeout=30000)
+        except Exception:
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
+
+        html = page.content()
+
+        # ── Cím ──
+        title = ""
+        h1 = page.query_selector("h1")
+        if h1:
+            title = clean_text(h1.inner_text())
+        if not title:
+            og = page.query_selector("meta[property='og:title']")
+            if og:
+                title = clean_text(og.get_attribute("content") or "")
+
+        # ── Ár ──
+        price = ""
+        for sel in ["[class*='price']", "[class*='ar']", "[class*='Price']"]:
+            els = page.query_selector_all(sel)
+            for el in els:
+                try:
+                    t = clean_text(el.inner_text())
+                    if re.search(r"\d[\d\s]{4,}", t) and len(t) < 40:
+                        price = parse_price(t)
+                        if price:
+                            break
+                except:
+                    pass
+            if price:
+                break
+        # Fallback: regex az egész szövegben
+        if not price:
+            full_text = page.inner_text("body")
+            m = re.search(r"[\d][\d\s]{5,}\s*Ft", full_text)
+            if m:
+                price = parse_price(m.group())
+
+        # ── Leírás ──
+        description = ""
+        for sel in ["[class*='desc']", "[class*='leiras']", "[class*='content']", "article", "main p"]:
+            els = page.query_selector_all(sel)
+            for el in els:
+                try:
+                    t = clean_text(el.inner_text())
+                    if len(t) > 150:
+                        description = t
+                        break
+                except:
+                    pass
+            if description:
+                break
+
+        # ── Adatok (méret, telek stb.) ──
+        full_text = page.inner_text("body")
+        size      = None
+        plot_size = None
+        bedrooms  = None
+
+        m = re.search(r"(\d+)\s*m[²2]\s*(?:alap|élettér|nettó)", full_text, re.I)
+        if m: size = int(m.group(1))
+        # az URL-ből is kiolvasható
+        m = re.search(r"(\d+)-m2-es-telken", url)
+        if m: plot_size = int(m.group(1))
+        m = re.search(r"(\d+)-m2-es-(?:\d+-ben|\w+-epult)", url)
+        if m and not size: size = int(m.group(1))
+        m = re.search(r"(\d+)-haloszobas", url)
+        if m: bedrooms = int(m.group(1))
+
+        # ── Képek ──
+        images = []
+        seen = set()
+
+        # <img> tagek
+        for img in page.query_selector_all("img"):
+            src = img.get_attribute("src") or img.get_attribute("data-src") or ""
+            if "digitaloceanspaces.com" in src or "/images/" in src:
+                if src.startswith("http") and src not in seen:
+                    seen.add(src)
+                    images.append(src)
+
+        # Regex a HTML-ből
+        for m in re.findall(r'https?://[^\s"\'>]+\.(?:jpg|jpeg|png|webp)', html):
+            if "logo" not in m.lower() and "avatar" not in m.lower():
+                if m not in seen:
+                    seen.add(m)
+                    images.append(m)
+
+        print(f"  [debug] Képek találva: {len(images)}")
+
+        # ── Helyszín az URL-ből ──
+        location = "Szeged"
+        if "ujszeged" in url or "uj-szeged" in url:
+            location = "Szeged, Újszeged"
+        elif "szeged" in url:
+            location = "Szeged"
+
+        browser.close()
+
+    return {
+        "id":            slug,
+        "slug":          slug,
+        "title":         title or slug.replace("-", " ").title(),
+        "shortTitle":    title or slug.replace("-", " ").title(),
+        "price":         price,
+        "currency":      "Ft",
+        "location":      location,
+        "size":          size or 0,
+        "plotSize":      plot_size or 0,
+        "balconySize":   0,
+        "bedrooms":      bedrooms or 0,
+        "livingRooms":   1,
+        "bathrooms":     1,
+        "floors":        1,
+        "type":          "Családi ház",
+        "material":      "",
+        "builtYear":     None,
+        "renovatedYear": None,
+        "condition":     "",
+        "heating":       "",
+        "parking":       "",
+        "orientation":   "",
+        "energyRating":  "",
+        "status":        "Eladó",
+        "sourceUrl":     url,
+        "description":   description,
+        "extras":        [],
+        "rooms":         [],
+        "contact":       {},
+        "images":        [],
+        "_raw_images":   images,
+    }
+
 # ── Általános scraper ────────────────────────────────────────────────────────
 
 def scrape_generic(html: str, url: str, slug: str) -> dict:
@@ -319,6 +468,11 @@ def main():
     domain = urlparse(url).netloc
     if "varos.hu" in domain:
         prop = scrape_varos_hu(html, url, slug)
+    elif "posztolom.com" in domain:
+        prop = scrape_posztolom(url, slug)
+        if prop is None:
+            print("  Playwright nélkül nem tudom feldolgozni ezt az oldalt.")
+            sys.exit(1)
     else:
         prop = scrape_generic(html, url, slug)
         print(f"  ⚠️  Ismeretlen forrás ({domain}) — ellenőrizd kézzel a properties.json-t!")
