@@ -47,7 +47,9 @@ HEADERS = {
 
 def slug_from_url(url: str) -> str:
     path = urlparse(url).path.rstrip("/")
-    return path.split("/")[-1]
+    seg = path.split("/")[-1]
+    # Eltávolítjuk a query string maradványait
+    return seg.split("?")[0]
 
 def clean_text(s) -> str:
     return re.sub(r"\s+", " ", s or "").strip()
@@ -367,6 +369,168 @@ def scrape_posztolom(url: str, slug: str) -> dict:
         "_raw_images":   images,
     }
 
+
+# ── ingatlan.com scraper (Playwright) ───────────────────────────────────────
+
+def scrape_ingatlancom(url: str, slug: str) -> dict:
+    """ingatlan.com scraper — Playwright alapú (JS rendering)."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        print("  Playwright nincs telepítve. Futtasd: pip install playwright && python -m playwright install chromium")
+        return None
+
+    # Clean URL - csak az ID kell
+    clean_url = re.sub(r'[?&](brid|fbclid|utm_)[^&]*', '', url).rstrip('?&')
+
+    print("  Playwright böngészővel töltöm be az oldalt...")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36"
+        )
+        try:
+            page.goto(clean_url, wait_until="networkidle", timeout=30000)
+        except Exception:
+            page.goto(clean_url, wait_until="domcontentloaded", timeout=30000)
+
+        # Cookie/popup bezárás
+        for btn_text in ["Elfogadom", "Rendben", "OK", "Bezár", "Elutasít"]:
+            try:
+                btn = page.get_by_text(btn_text, exact=True).first
+                if btn.is_visible():
+                    btn.click()
+                    page.wait_for_timeout(500)
+            except:
+                pass
+
+        html = page.content()
+        full_text = page.inner_text("body")
+
+        # ── Cím ──
+        title = ""
+        for sel in ["h1", "[class*='title']", "[class*='Title']", "h2"]:
+            el = page.query_selector(sel)
+            if el:
+                t = clean_text(el.inner_text())
+                if t and len(t) > 5:
+                    title = t
+                    break
+
+        # ── Ár ──
+        price = ""
+        # ingatlan.com ár formátum: "89 900 000 Ft" vagy "89,9 M Ft"
+        for pattern in [r'\d[\d\s]{5,}\s*Ft', r'\d+[,.]\d+\s*M\s*Ft']:
+            m = re.search(pattern, full_text)
+            if m:
+                raw = m.group()
+                if 'M Ft' in raw or 'M\xa0Ft' in raw:
+                    # Millió formátum: "89,9 M Ft" -> "89 900 000"
+                    num = re.search(r'[\d,\.]+', raw)
+                    if num:
+                        val = float(num.group().replace(',', '.')) * 1_000_000
+                        price = str(int(val))
+                else:
+                    price = parse_price(raw)
+                if price:
+                    break
+
+        # ── Leírás ──
+        description = ""
+        for sel in ["[class*='description']", "[class*='Description']",
+                    "[class*='leiras']", "[class*='content']", "article"]:
+            els = page.query_selector_all(sel)
+            for el in els:
+                try:
+                    t = clean_text(el.inner_text())
+                    if len(t) > 200:
+                        description = t[:2000]
+                        break
+                except:
+                    pass
+            if description:
+                break
+
+        # ── Numerikus adatok regex-szel ──
+        size, plot_size, bedrooms = None, None, None
+
+        m = re.search(r'(\d+)\s*m[²2]\s*(?:alap|nettó|élettér|lakó)', full_text, re.I)
+        if m: size = int(m.group(1))
+
+        m = re.search(r'[Tt]elek[^\d]*(\d+)\s*m[²2]', full_text)
+        if m: plot_size = int(m.group(1))
+
+        m = re.search(r'(\d+)\s*[Ss]zoba', full_text)
+        if m: bedrooms = int(m.group(1))
+
+        # ── Képek ──
+        images = []
+        seen = set()
+
+        def add_img(src):
+            if not src or len(src) < 10: return
+            if any(x in src.lower() for x in ['logo', 'icon', 'avatar', 'sprite', 'placeholder']): return
+            if src.startswith('data:'): return
+            if src not in seen:
+                seen.add(src)
+                images.append(src)
+
+        # <img> tagek
+        for img in page.query_selector_all("img"):
+            add_img(img.get_attribute("src") or "")
+            add_img(img.get_attribute("data-src") or "")
+            add_img(img.get_attribute("data-lazy") or "")
+
+        # Regex a HTML-ből - ingatlan.com CDN URL-ek
+        for m in re.findall(r'https?://[^\s"\'> ]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"\'> ]*)?', html):
+            if any(x in m for x in ['cdn', 'image', 'foto', 'kep', 'photo', 'media', 'static']):
+                add_img(m.split('?')[0])  # query string levágása
+
+        print(f"  [debug] Képek találva: {len(images)}")
+        print(f"  [debug] Cím: {title[:60]}")
+        print(f"  [debug] Ár: {price}")
+
+        # ── Helyszín ──
+        location = "Szeged"
+        m = re.search(r'Szeged[^,]*', full_text)
+        if m: location = clean_text(m.group()[:40])
+
+        browser.close()
+
+    return {
+        "id":            slug,
+        "slug":          slug,
+        "title":         title or slug,
+        "shortTitle":    title or slug,
+        "price":         price,
+        "currency":      "Ft",
+        "location":      location,
+        "size":          size or 0,
+        "plotSize":      plot_size or 0,
+        "balconySize":   0,
+        "bedrooms":      bedrooms or 0,
+        "livingRooms":   1,
+        "bathrooms":     1,
+        "floors":        1,
+        "type":          "Családi ház",
+        "material":      "",
+        "builtYear":     None,
+        "renovatedYear": None,
+        "condition":     "",
+        "heating":       "",
+        "parking":       "",
+        "orientation":   "",
+        "energyRating":  "",
+        "status":        "Eladó",
+        "sourceUrl":     clean_url,
+        "description":   description,
+        "extras":        [],
+        "rooms":         [],
+        "contact":       {},
+        "images":        [],
+        "_raw_images":   images,
+    }
+
 # ── Általános scraper ────────────────────────────────────────────────────────
 
 def scrape_generic(html: str, url: str, slug: str) -> dict:
@@ -452,30 +616,36 @@ def main():
             sys.exit(0)
         properties = [p for p in properties if p["slug"] != slug]
 
-    # Oldal letöltése
-    print("⬇️  Oldal letöltése...")
-    try:
-        resp = requests.get(url, headers=HEADERS, timeout=20)
-        resp.raise_for_status()
-        resp.encoding = "utf-8"
-        html = resp.text
-    except Exception as e:
-        print(f"✗ Letöltési hiba: {e}")
-        sys.exit(1)
-
-    # Scraping
-    print("🔍 Adatok kinyerése...")
+    # Scraping — Playwright-alapú oldalak nem igényelnek előzetes requests letöltést
     domain = urlparse(url).netloc
-    if "varos.hu" in domain:
-        prop = scrape_varos_hu(html, url, slug)
-    elif "posztolom.com" in domain:
-        prop = scrape_posztolom(url, slug)
+    print("🔍 Adatok kinyerése...")
+
+    if "ingatlan.com" in domain or "posztolom.com" in domain:
+        # Playwright kezeli a letöltést is
+        if "ingatlan.com" in domain:
+            prop = scrape_ingatlancom(url, slug)
+        else:
+            prop = scrape_posztolom(url, slug)
         if prop is None:
             print("  Playwright nélkül nem tudom feldolgozni ezt az oldalt.")
             sys.exit(1)
     else:
-        prop = scrape_generic(html, url, slug)
-        print(f"  ⚠️  Ismeretlen forrás ({domain}) — ellenőrizd kézzel a properties.json-t!")
+        # Sima requests letöltés
+        print("⬇️  Oldal letöltése...")
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=20)
+            resp.raise_for_status()
+            resp.encoding = "utf-8"
+            html = resp.text
+        except Exception as e:
+            print(f"✗ Letöltési hiba: {e}")
+            sys.exit(1)
+
+        if "varos.hu" in domain:
+            prop = scrape_varos_hu(html, url, slug)
+        else:
+            prop = scrape_generic(html, url, slug)
+            print(f"  ⚠️  Ismeretlen forrás ({domain}) — ellenőrizd kézzel a properties.json-t!")
 
     print(f"  Cím:   {prop['title']}")
     print(f"  Ár:    {prop['price']} {prop['currency']}")
