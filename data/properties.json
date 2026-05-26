@@ -83,5 +83,39 @@
       "https://varos.hu/storage/listings/2026/05/54650/54650_09_17_37_1779261457.6689.jpeg",
       "https://varos.hu/storage/listings/2026/05/54650/54650_09_17_38_1779261458.0319.jpeg"
     ]
+  },
+  {
+    "id": "104487",
+    "slug": "104487",
+    "title": "Eladó ház - 6726, Szeged - Ingatlan Posztolom",
+    "shortTitle": "Eladó ház - 6726, Szeged - Ingatlan Posztolom",
+    "price": "",
+    "currency": "Ft",
+    "location": "",
+    "size": 0,
+    "plotSize": 0,
+    "balconySize": 0,
+    "bedrooms": 0,
+    "livingRooms": 1,
+    "bathrooms": 1,
+    "floors": 1,
+    "type": "Ingatlan",
+    "material": "",
+    "builtYear": null,
+    "renovatedYear": null,
+    "condition": "",
+    "heating": "",
+    "parking": "",
+    "orientation": "",
+    "energyRating": "",
+    "status": "Eladó",
+    "sourceUrl": "https://ingatlan.posztolom.com/ujszeged-marostoi-varosreszeben-kinalunk-eladasra-egy-eldugott-739-m2-es-telken-131-m2-es-1990-ben-epult-szigetelt-gyonyoru-intim-kerttel-rendelkezo-nappali-plusz-4-haloszobas-jo-allapotu-felujitott-dupla-komfortos-csaladi-hazat/104487",
+    "description": "Újszeged, Marostői városrészében, kínálunk eladásra egy eldugott, 739 m²-es telken, 131 m²-es, 1990-ben épült, szigetelt, gyönyörű, intim kerttel rendelkező, nappali plusz 4 hálószobás, jó állapotú/ felújított, dupla komfortos családi házat.",
+    "extras": [],
+    "rooms": [],
+    "contact": {},
+    "images": [
+      "images/104487/img_01.jpg"
+    ]
   }
 ]
