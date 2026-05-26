@@ -830,7 +830,8 @@
   const emptyEl = document.getElementById('emptyState');
 
   function formatPrice(p) {
-    return p.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    if (!p) return 'Ár egyeztetés alapján';
+    return String(p).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
 
   function renderGrid() {
@@ -1023,12 +1024,12 @@
         </a>
       </div>
 
-      ${p.contact ? `
+      ${p.contact && p.contact.name ? `
       <div class="contact-card">
         <div class="sidebar-block-title">Kapcsolat</div>
         <div class="contact-name">${p.contact.name}</div>
-        <div class="contact-title">${p.contact.title} · ${p.contact.company}</div>
-        <a class="contact-phone" href="tel:${p.contact.phone.replace(/\s/g,'')}">
+        <div class="contact-title">${p.contact.title || ''} · ${p.contact.company || ''}</div>
+        <a class="contact-phone" href="tel:${(p.contact.phone || '').replace(/\s/g,'')}">
           <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round"
             d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
           ${p.contact.phone}
