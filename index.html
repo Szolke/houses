@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ingatlan Portfólió</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0e0e;
+      --surface: #161616;
+      --surface2: #1e1e1e;
+      --border: #2a2a2a;
+      --text: #e8e0d5;
+      --text-muted: #7a746c;
+      --text-dim: #4a4540;
+      --accent: #c9a96e;
+      --accent-dim: #8a6d3d;
+      --accent-glow: rgba(201, 169, 110, 0.15);
+      --white: #f5f0e8;
+      --font-display: 'Cormorant Garamond', Georgia, serif;
+      --font-body: 'DM Sans', sans-serif;
+      --radius: 4px;
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 20px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(to bottom, rgba(14,14,14,0.98) 0%, transparent 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 300;
+      letter-spacing: 0.08em;
+      color: var(--white);
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .header-tag {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 300;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 140px 48px 80px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .hero-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 400;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(48px, 6vw, 88px);
+      font-weight: 300;
+      line-height: 1.0;
+      color: var(--white);
+      letter-spacing: -0.01em;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .hero-sub {
+      color: var(--text-muted);
+      font-weight: 300;
+      font-size: 16px;
+      max-width: 480px;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--border), transparent);
+      margin: 0 48px;
+    }
+
+    /* ── GRID ── */
+    .properties-section {
+      padding: 64px 48px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 300;
+      color: var(--white);
+    }
+
+    .section-count {
+      font-size: 12px;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+    }
+
+    .properties-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 2px;
+    }
+
+    /* ── CARD ── */
+    .property-card {
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      background: var(--surface);
+    }
+
+    .property-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        rgba(0,0,0,0.92) 0%,
+        rgba(0,0,0,0.4) 50%,
+        rgba(0,0,0,0.1) 100%
+      );
+      z-index: 1;
+      transition: var(--transition);
+    }
+
+    .property-card:hover::after {
+      background: linear-gradient(
+        to top,
+        rgba(0,0,0,0.85) 0%,
+        rgba(0,0,0,0.3) 40%,
+        rgba(0,0,0,0.05) 100%
+      );
+    }
+
+    .card-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .property-card:hover .card-image {
+      transform: scale(1.06);
+    }
+
+    .card-content {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 28px 28px 24px;
+      z-index: 2;
+    }
+
+    .card-location {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+      font-weight: 400;
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--white);
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .card-stats {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .card-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .card-stat-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--white);
+    }
+
+    .card-stat-label {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .card-price {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+    }
+
+    .card-hover-btn {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      z-index: 2;
+      width: 44px;
+      height: 44px;
+      border: 1px solid rgba(201,169,110,0.5);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: var(--transition);
+      background: rgba(0,0,0,0.4);
+    }
+
+    .property-card:hover .card-hover-btn {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .card-hover-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--accent);
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0,0,0,0.92);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: stretch;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      animation: modalSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    @keyframes modalSlide {
+      from { transform: translateY(24px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-close {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 210;
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--surface);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .modal-close:hover {
+      border-color: var(--accent);
+      background: var(--surface2);
+    }
+
+    .modal-close svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--text-muted);
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    .modal-close:hover svg {
+      stroke: var(--accent);
+    }
+
+    /* Gallery */
+    .gallery-section {
+      position: relative;
+      width: 100%;
+      height: 70vh;
+      min-height: 400px;
+      background: #000;
+      flex-shrink: 0;
+    }
+
+    .gallery-track {
+      display: flex;
+      height: 100%;
+      transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .gallery-slide {
+      min-width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .gallery-slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .gallery-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      width: 52px;
+      height: 52px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(0,0,0,0.5);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .gallery-nav:hover {
+      border-color: var(--accent);
+      background: rgba(0,0,0,0.8);
+    }
+
+    .gallery-nav svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--white);
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    .gallery-nav:hover svg { stroke: var(--accent); }
+
+    .gallery-prev { left: 24px; }
+    .gallery-next { right: 24px; }
+
+    .gallery-counter {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      letter-spacing: 0.15em;
+      color: rgba(255,255,255,0.6);
+      background: rgba(0,0,0,0.5);
+      padding: 6px 16px;
+      border-radius: 20px;
+    }
+
+    .gallery-dots {
+      position: absolute;
+      bottom: 20px;
+      right: 24px;
+      display: flex;
+      gap: 6px;
+    }
+
+    .gallery-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .gallery-dot.active {
+      background: var(--accent);
+      width: 20px;
+      border-radius: 3px;
+    }
+
+    /* Modal Content */
+    .modal-content {
+      background: var(--bg);
+      padding: 64px 48px;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .modal-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 40px;
+      align-items: start;
+      margin-bottom: 48px;
+      padding-bottom: 48px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: clamp(32px, 4vw, 52px);
+      font-weight: 300;
+      color: var(--white);
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+
+    .modal-price-block {
+      text-align: right;
+    }
+
+    .modal-price-label {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .modal-price {
+      font-family: var(--font-display);
+      font-size: 42px;
+      font-weight: 600;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .modal-price-currency {
+      font-size: 20px;
+      font-weight: 300;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 4px;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      margin-bottom: 64px;
+    }
+
+    .stat-item {
+      background: var(--surface);
+      padding: 24px 20px;
+      transition: var(--transition);
+    }
+
+    .stat-item:hover {
+      background: var(--surface2);
+    }
+
+    .stat-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--white);
+    }
+
+    .stat-unit {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+    }
+
+    /* Two columns */
+    .modal-body {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 64px;
+      margin-bottom: 64px;
+    }
+
+    .modal-description {
+      font-size: 16px;
+      line-height: 1.8;
+      color: var(--text-muted);
+      font-weight: 300;
+      white-space: pre-line;
+    }
+
+    .modal-sidebar {}
+
+    .sidebar-block {
+      margin-bottom: 40px;
+    }
+
+    .sidebar-block-title {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .rooms-list {
+      list-style: none;
+    }
+
+    .rooms-list li {
+      padding: 8px 0;
+      font-size: 14px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .rooms-list li::before {
+      content: '';
+      width: 4px;
+      height: 4px;
+      background: var(--accent-dim);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .extras-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .extra-tag {
+      font-size: 11px;
+      padding: 4px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    /* Source link */
+    .source-link-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+
+    .source-link-label {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .source-link-url {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 400;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .source-link-url:hover { color: var(--white); }
+
+    .source-link-url svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    /* Contact */
+    .contact-card {
+      padding: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .contact-name {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--white);
+      margin-bottom: 4px;
+    }
+
+    .contact-title {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      letter-spacing: 0.05em;
+    }
+
+    .contact-phone {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .contact-phone:hover { color: var(--white); }
+
+    .contact-phone svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    /* Empty state */
+    .empty-state {
+      padding: 120px 48px;
+      text-align: center;
+      display: none;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+
+    .empty-state p {
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 48px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    footer p {
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      header { padding: 16px 20px; }
+      .hero { padding: 100px 20px 48px; }
+      .divider { margin: 0 20px; }
+      .properties-section { padding: 40px 20px; }
+      .properties-grid { grid-template-columns: 1fr; }
+      .modal-content { padding: 32px 20px; }
+      .modal-header { grid-template-columns: 1fr; }
+      .modal-price-block { text-align: left; }
+      .modal-body { grid-template-columns: 1fr; gap: 40px; }
+      footer { flex-direction: column; gap: 12px; padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Ingatlan <span>Portfólió</span></div>
+  <div class="header-tag">Válogatott ingatlanok</div>
+</header>
+
+<section class="hero">
+  <p class="hero-eyebrow">Prémium kínálat — Szeged és vonzáskörzete</p>
+  <h1>Kivételes<br /><em>ingatlanok</em><br />egy helyen</h1>
+  <p class="hero-sub">Gondosan válogatott családi házak és lakások — minden adat, minden kép, egy helyen.</p>
+</section>
+
+<div class="divider"></div>
+
+<section class="properties-section">
+  <div class="section-header">
+    <h2 class="section-title">Eladó ingatlanok</h2>
+    <span class="section-count" id="propCount">— db</span>
+  </div>
+
+  <div class="properties-grid" id="propertiesGrid"></div>
+  <div class="empty-state" id="emptyState">
+    <div class="empty-state-icon">🏡</div>
+    <p>Jelenleg nincsenek hirdetések.</p>
+  </div>
+</section>
+
+<footer>
+  <p>Összeállított ingatlan-portfólió</p>
+  <p>Adatok forrása: varos.hu és egyéb ingatlan oldalak</p>
+</footer>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal">
+
+    <button class="modal-close" id="modalClose" aria-label="Bezárás">
+      <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+
+    <div class="gallery-section" id="gallery">
+      <div class="gallery-track" id="galleryTrack"></div>
+      <button class="gallery-nav gallery-prev" id="galleryPrev" aria-label="Előző">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <button class="gallery-nav gallery-next" id="galleryNext" aria-label="Következő">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+      </button>
+      <div class="gallery-counter" id="galleryCounter"></div>
+      <div class="gallery-dots" id="galleryDots"></div>
+    </div>
+
+    <div class="modal-content" id="modalContent"></div>
+
+  </div>
+</div>
+
+<script>
+(async function() {
+
+  let properties = [];
+  let currentSlide = 0;
+  let currentImages = [];
+
+  try {
+    const res = await fetch('data/properties.json');
+    properties = await res.json();
+  } catch(e) {
+    console.error('Nem sikerült betölteni az adatokat:', e);
+  }
+
+  const grid = document.getElementById('propertiesGrid');
+  const countEl = document.getElementById('propCount');
+  const emptyEl = document.getElementById('emptyState');
+
+  function formatPrice(p) {
+    return p.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
+
+  function renderGrid() {
+    countEl.textContent = properties.length + ' db';
+    if (!properties.length) {
+      emptyEl.style.display = 'block';
+      return;
+    }
+
+    grid.innerHTML = properties.map((p, idx) => `
+      <div class="property-card" data-idx="${idx}" role="button" tabindex="0"
+           aria-label="${p.title} megtekintése">
+        <img class="card-image" src="${p.images[0]}" alt="${p.title}"
+             onerror="this.style.display='none'; this.parentElement.style.background='var(--surface2)'" />
+        <div class="card-hover-btn">
+          <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round"
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round"
+            stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943
+            9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        </div>
+        <div class="card-content">
+          <div class="card-location">${p.location}</div>
+          <div class="card-title">${p.shortTitle || p.title}</div>
+          <div class="card-stats">
+            <div class="card-stat">
+              <span class="card-stat-value">${p.size} m²</span>
+              <span class="card-stat-label">Alapterület</span>
+            </div>
+            <div class="card-stat">
+              <span class="card-stat-value">${p.plotSize} m²</span>
+              <span class="card-stat-label">Telekméret</span>
+            </div>
+            <div class="card-stat">
+              <span class="card-stat-value">${p.bedrooms + p.livingRooms} szoba</span>
+              <span class="card-stat-label">Helyiségek</span>
+            </div>
+          </div>
+          <div class="card-price">${formatPrice(p.price)} ${p.currency}</div>
+        </div>
+      </div>
+    `).join('');
+
+    grid.querySelectorAll('.property-card').forEach(card => {
+      card.addEventListener('click', () => openModal(+card.dataset.idx));
+      card.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') openModal(+card.dataset.idx);
+      });
+    });
+  }
+
+  // ── GALLERY ──
+  const track = document.getElementById('galleryTrack');
+  const counterEl = document.getElementById('galleryCounter');
+  const dotsEl = document.getElementById('galleryDots');
+
+  function buildGallery(images) {
+    currentImages = images;
+    currentSlide = 0;
+
+    track.innerHTML = images.map((src, i) => `
+      <div class="gallery-slide">
+        <img src="${src}" alt="Kép ${i+1}" loading="${i === 0 ? 'eager' : 'lazy'}"
+             onerror="this.style.opacity='0.2'; this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\'/>'" />
+      </div>
+    `).join('');
+
+    dotsEl.innerHTML = images.slice(0, 12).map((_, i) =>
+      `<div class="gallery-dot${i===0?' active':''}" data-i="${i}"></div>`
+    ).join('');
+
+    dotsEl.querySelectorAll('.gallery-dot').forEach(d =>
+      d.addEventListener('click', () => goToSlide(+d.dataset.i))
+    );
+
+    updateCounter();
+  }
+
+  function updateCounter() {
+    counterEl.textContent = `${currentSlide + 1} / ${currentImages.length}`;
+    dotsEl.querySelectorAll('.gallery-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === currentSlide);
+    });
+    track.style.transform = `translateX(-${currentSlide * 100}%)`;
+  }
+
+  function goToSlide(n) {
+    currentSlide = (n + currentImages.length) % currentImages.length;
+    updateCounter();
+  }
+
+  document.getElementById('galleryPrev').addEventListener('click', () => goToSlide(currentSlide - 1));
+  document.getElementById('galleryNext').addEventListener('click', () => goToSlide(currentSlide + 1));
+
+  // Keyboard gallery
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('modalOverlay').classList.contains('active')) return;
+    if (e.key === 'ArrowLeft') goToSlide(currentSlide - 1);
+    if (e.key === 'ArrowRight') goToSlide(currentSlide + 1);
+    if (e.key === 'Escape') closeModal();
+  });
+
+  // Touch swipe
+  let touchStartX = 0;
+  track.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, {passive: true});
+  track.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) dx < 0 ? goToSlide(currentSlide + 1) : goToSlide(currentSlide - 1);
+  });
+
+  // ── MODAL ──
+  function openModal(idx) {
+    const p = properties[idx];
+    buildGallery(p.images);
+
+    const content = document.getElementById('modalContent');
+    content.innerHTML = `
+      <div class="modal-header">
+        <div>
+          <p class="modal-eyebrow">${p.type} · ${p.location}</p>
+          <h2 class="modal-title">${p.title}</h2>
+        </div>
+        <div class="modal-price-block">
+          <p class="modal-price-label">Eladási ár</p>
+          <div class="modal-price">${formatPrice(p.price)}</div>
+          <span class="modal-price-currency">${p.currency}</span>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-label">Alapterület</div>
+          <div class="stat-value">${p.size}<span class="stat-unit"> m²</span></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Telek</div>
+          <div class="stat-value">${p.plotSize}<span class="stat-unit"> m²</span></div>
+        </div>
+        ${p.balconySize ? `<div class="stat-item">
+          <div class="stat-label">Erkély/Terasz</div>
+          <div class="stat-value">${p.balconySize}<span class="stat-unit"> m²</span></div>
+        </div>` : ''}
+        <div class="stat-item">
+          <div class="stat-label">Hálószobák</div>
+          <div class="stat-value">${p.bedrooms}<span class="stat-unit"> db</span></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Nappalii</div>
+          <div class="stat-value">${p.livingRooms}<span class="stat-unit"> db</span></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Építés éve</div>
+          <div class="stat-value">${p.builtYear}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Felújítás</div>
+          <div class="stat-value">${p.renovatedYear || '—'}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Energia</div>
+          <div class="stat-value">${p.energyRating || '—'}</div>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div>
+          <p class="modal-description">${p.description}</p>
+        </div>
+        <div class="modal-sidebar">
+          <div class="sidebar-block">
+            <div class="sidebar-block-title">Helyiségek</div>
+            <ul class="rooms-list">
+              ${(p.rooms || []).map(r => `<li>${r}</li>`).join('')}
+            </ul>
+          </div>
+          <div class="sidebar-block">
+            <div class="sidebar-block-title">Extrák</div>
+            <div class="extras-grid">
+              ${(p.extras || []).map(e => `<span class="extra-tag">${e}</span>`).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="source-link-bar">
+        <span class="source-link-label">Eredeti hirdetés</span>
+        <a class="source-link-url" href="${p.sourceUrl}" target="_blank" rel="noopener">
+          ${p.sourceUrl}
+          <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round"
+            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
+      </div>
+
+      ${p.contact ? `
+      <div class="contact-card">
+        <div class="sidebar-block-title">Kapcsolat</div>
+        <div class="contact-name">${p.contact.name}</div>
+        <div class="contact-title">${p.contact.title} · ${p.contact.company}</div>
+        <a class="contact-phone" href="tel:${p.contact.phone.replace(/\s/g,'')}">
+          <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+          ${p.contact.phone}
+        </a>
+      </div>` : ''}
+    `;
+
+    document.getElementById('modalOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    document.getElementById('modal').scrollTop = 0;
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('modalOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+  });
+
+  renderGrid();
+
+})();
+</script>
+</body>
+</html>
